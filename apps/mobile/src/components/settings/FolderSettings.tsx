@@ -5,7 +5,11 @@ import { SectionLabel } from '../ui/SectionLabel';
 import { colors, radii, spacing } from '../../theme/tokens';
 import { useFolderSettings } from './useFolderSettings';
 
-export function FolderSettings() {
+interface FolderSettingsProps {
+  onPcPathChange: (path: string) => void;
+}
+
+export function FolderSettings({ onPcPathChange }: FolderSettingsProps) {
   const { androidPath, pcPath, selectAndroidFolder, setPcPath } = useFolderSettings();
 
   return (
@@ -21,7 +25,10 @@ export function FolderSettings() {
           autoCapitalize="none"
           autoCorrect={false}
           multiline
-          onChangeText={setPcPath}
+          onChangeText={(path) => {
+            setPcPath(path);
+            onPcPathChange(path);
+          }}
           placeholder="C:\\path\\to\\nds"
           placeholderTextColor={colors.textMuted}
           style={styles.pathInput}

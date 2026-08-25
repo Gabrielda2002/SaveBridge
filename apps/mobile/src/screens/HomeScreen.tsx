@@ -8,11 +8,12 @@ import { colors, radii, spacing } from '../theme/tokens';
 
 interface HomeScreenProps {
   connectionState: string;
+  detectedSaves: number;
   onOpenSettings: () => void;
   onSync: () => void;
 }
 
-export function HomeScreen({ connectionState, onOpenSettings, onSync }: HomeScreenProps) {
+export function HomeScreen({ connectionState, detectedSaves, onOpenSettings, onSync }: HomeScreenProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -50,8 +51,12 @@ export function HomeScreen({ connectionState, onOpenSettings, onSync }: HomeScre
             <Text style={styles.gameMarkText}>DS</Text>
           </View>
           <View style={styles.activityDetails}>
-            <Text style={styles.gameTitle}>No saves synced yet</Text>
-            <Text style={styles.activityMeta}>Your recent activity will appear here</Text>
+            <Text style={styles.gameTitle}>
+              {detectedSaves ? `${detectedSaves} save(s) detected on PC` : 'No saves detected yet'}
+            </Text>
+            <Text style={styles.activityMeta}>
+              {detectedSaves ? 'Ready to compare with Android' : 'Test the PC connection to scan the folder'}
+            </Text>
           </View>
           <Text style={styles.activityArrow}>...</Text>
         </View>

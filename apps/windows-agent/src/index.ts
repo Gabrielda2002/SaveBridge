@@ -1,32 +1,24 @@
-import { createServer } from 'node:http';
+import { createAgentServer } from './server.js';
+import { getGamesRoot, getPairingToken } from './config.js';
+import { networkInterfaces } from 'node:os';
+import { createRequire } from 'node:module';
 
-import type { AgentHealthResponse, DevicePlatform } from '@savebridge/protocol';
+const require = createRequire(import.meta.url);
+const qrcode = require('qrcode-terminal') as typeof import('qrcode-terminal');
 
-const platform: DevicePlatform = 'windows';
 const port = Number(process.env.SAVE_BRIDGE_PORT ?? 45821);
+const server = createAgentServer();
 
-const server = createServer((request, response) => {
-  if (request.method === 'GET' && request.url === '/health') {
-    const health: AgentHealthResponse = {
-      service: 'savebridge-agent',
-      version: '0.1.0',
-      platform,
-      status: 'ok',
-    };
-    const body = JSON.stringify(health);
-
-    response.writeHead(200, {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(body),
-    });
-    response.end(body);
-    return;
-  }
-
-  response.writeHead(404, { 'Content-Type': 'application/json' });
-  response.end(JSON.stringify({ error: 'Not found' }));
-});
+function getLanAddress() {
+  const interfaces = Object.values(networkInterfaces()).flat();
+  return interfaces.find((entry) => entry?.family === 'IPv4' && !entry.internal)?.address ?? '127.0.0.1';
+}
 
 server.listen(port, '0.0.0.0', () => {
-  console.log(`SaveBridge agent listening on http://0.0.0.0:${port}`);
+  const address = `http://${getLanAddress()}:${port}`;
+  console.log(`SaveBridge agent listening on ${address}`);
+  console.log(`Configured games folder: ${getGamesRoot()}`);
+  console.log(`Pairing token: ${getPairingToken()}`);
+  console.log('Scan this QR code from the SaveBridge app:');
+  qrcode.generate(JSON.stringify({ address, token: getPairingToken() }), { small: true });
 });

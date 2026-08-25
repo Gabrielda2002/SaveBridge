@@ -16,3 +16,30 @@ export interface AgentHealthResponse {
   platform: 'windows';
   status: 'ok';
 }
+
+export interface GameSaveDescriptor {
+  gameId: string;
+  saveFileName: string;
+  savePath: string;
+  size: number;
+  modifiedAt: string;
+}
+
+export interface GameListResponse {
+  gamesRoot: string;
+  saves: GameSaveDescriptor[];
+}
+
+export interface ConfigureGamesFolderRequest {
+  gamesRoot: string;
+}
+
+export interface ConfigureGamesFolderResponse {
+  gamesRoot: string;
+  status: 'configured';
+}
+
+export interface PairingPayload {
+  address: string;
+  token: string;
+}

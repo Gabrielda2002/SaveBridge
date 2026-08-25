@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import type { PairingPayload } from '@savebridge/protocol';
 
 import { ConnectionSettings } from '../components/settings/ConnectionSettings';
 import { FolderSettings } from '../components/settings/FolderSettings';
@@ -7,18 +8,26 @@ import { colors, spacing } from '../theme/tokens';
 
 interface SettingsScreenProps {
   address: string;
+  pairingToken: string;
   connectionState: string;
   onAddressChange: (address: string) => void;
   onBack: () => void;
   onCheckConnection: () => void;
+  onPairingTokenChange: (token: string) => void;
+  onPaired: (payload: PairingPayload) => void;
+  onPcPathChange: (path: string) => void;
 }
 
 export function SettingsScreen({
   address,
+  pairingToken,
   connectionState,
   onAddressChange,
   onBack,
   onCheckConnection,
+  onPairingTokenChange,
+  onPaired,
+  onPcPathChange,
 }: SettingsScreenProps) {
   return (
     <View style={styles.content}>
@@ -36,15 +45,18 @@ export function SettingsScreen({
         <SectionLabel>CONNECTION</SectionLabel>
         <ConnectionSettings
           address={address}
+          pairingToken={pairingToken}
           onAddressChange={onAddressChange}
           onCheckConnection={onCheckConnection}
+          onPairingTokenChange={onPairingTokenChange}
+          onPaired={onPaired}
           state={connectionState}
         />
       </View>
 
       <View style={styles.section}>
         <SectionLabel>FOLDERS</SectionLabel>
-        <FolderSettings />
+        <FolderSettings onPcPathChange={onPcPathChange} />
       </View>
     </View>
   );

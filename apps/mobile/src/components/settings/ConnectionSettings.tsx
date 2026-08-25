@@ -1,21 +1,29 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import type { PairingPayload } from '@savebridge/protocol';
 
 import { Card } from '../ui/Card';
 import { SectionLabel } from '../ui/SectionLabel';
 import { StatusBadge } from '../ui/StatusBadge';
 import { colors, radii, spacing } from '../../theme/tokens';
+import { QrPairingButton } from './QrPairingButton';
 
 interface ConnectionSettingsProps {
   address: string;
+  pairingToken: string;
   state: string;
   onAddressChange: (address: string) => void;
+  onPairingTokenChange: (token: string) => void;
+  onPaired: (payload: PairingPayload) => void;
   onCheckConnection: () => void;
 }
 
 export function ConnectionSettings({
   address,
+  pairingToken,
   state,
   onAddressChange,
+  onPairingTokenChange,
+  onPaired,
   onCheckConnection,
 }: ConnectionSettingsProps) {
   return (
@@ -35,6 +43,18 @@ export function ConnectionSettings({
           style={styles.addressInput}
           value={address}
         />
+        <Text style={styles.fieldLabel}>PAIRING TOKEN</Text>
+        <TextInput
+          autoCapitalize="none"
+          autoCorrect={false}
+          onChangeText={onPairingTokenChange}
+          placeholder="Copy the token from the Windows agent"
+          placeholderTextColor={colors.textMuted}
+          secureTextEntry
+          style={styles.addressInput}
+          value={pairingToken}
+        />
+        <QrPairingButton onPaired={onPaired} />
         <Pressable
           accessibilityRole="button"
           onPress={onCheckConnection}
