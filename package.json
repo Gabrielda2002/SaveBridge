@@ -1,0 +1,9 @@
+{
+  "name": "savebridge",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.9.0",
+  "scripts": {
+    "typecheck": "pnpm --recursive typecheck"
+  }
+}
