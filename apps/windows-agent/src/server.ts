@@ -2,13 +2,20 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 
 import type {
   AgentHealthResponse,
+  CompareSavesRequest,
+  CompareSavesResponse,
   ConfigureGamesFolderRequest,
   ConfigureGamesFolderResponse,
   GameListResponse,
+  SaveDownloadResponse,
+  SaveUploadRequest,
+  SaveUploadResponse,
 } from '@savebridge/protocol';
 
 import { configureGamesRoot, getGamesRoot, isAuthorized } from './config.js';
+import { compareSaves } from './compare.js';
 import { findSaves } from './scanner.js';
+import { downloadSave, uploadSave } from './transfer.js';
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown) {
   const body = JSON.stringify(payload);
@@ -19,11 +26,11 @@ function sendJson(response: ServerResponse, statusCode: number, payload: unknown
   response.end(body);
 }
 
-async function readJson<T>(request: IncomingMessage): Promise<T> {
+async function readJson<T>(request: IncomingMessage, maxBytes = 8_192): Promise<T> {
   let body = '';
   for await (const chunk of request) {
     body += chunk;
-    if (body.length > 8_192) {
+    if (body.length > maxBytes) {
       throw new Error('Request body is too large');
     }
   }
@@ -65,6 +72,34 @@ export function createAgentServer() {
           gamesRoot: getGamesRoot(),
           saves: await findSaves(getGamesRoot()),
         };
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'POST' && request.url === '/compare') {
+        const body = await readJson<CompareSavesRequest>(request);
+        const result: CompareSavesResponse = {
+          games: compareSaves(body.androidSaves, await findSaves(getGamesRoot())),
+        };
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'POST' && request.url === '/save/upload') {
+        const body = await readJson<SaveUploadRequest>(request, 8_000_000);
+        const result: SaveUploadResponse = await uploadSave(getGamesRoot(), body);
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'GET' && request.url?.startsWith('/save/download?')) {
+        const searchParams = new URL(request.url, 'http://localhost').searchParams;
+        const savePath = searchParams.get('savePath');
+        if (!savePath) {
+          sendJson(response, 400, { error: 'Missing savePath query parameter' });
+          return;
+        }
+        const result: SaveDownloadResponse = await downloadSave(getGamesRoot(), savePath);
         sendJson(response, 200, result);
         return;
       }

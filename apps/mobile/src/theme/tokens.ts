@@ -12,6 +12,7 @@ export const colors = {
   accentDark: '#10131B',
   accentText: '#3B466D',
   success: '#73E6A1',
+  danger: '#F2878A',
 } as const;
 
 export const spacing = {

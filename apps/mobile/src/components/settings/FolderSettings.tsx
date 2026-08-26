@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Directory, File } from 'expo-file-system';
 
 import { Card } from '../ui/Card';
 import { SectionLabel } from '../ui/SectionLabel';
@@ -6,11 +8,36 @@ import { colors, radii, spacing } from '../../theme/tokens';
 import { useFolderSettings } from './useFolderSettings';
 
 interface FolderSettingsProps {
+  onAndroidPathChange: (path: string | null) => void;
   onPcPathChange: (path: string) => void;
 }
 
-export function FolderSettings({ onPcPathChange }: FolderSettingsProps) {
+export function FolderSettings({ onAndroidPathChange, onPcPathChange }: FolderSettingsProps) {
   const { androidPath, pcPath, selectAndroidFolder, setPcPath } = useFolderSettings();
+  const [androidSaveCount, setAndroidSaveCount] = useState<number | null>(null);
+  const [androidSaveNames, setAndroidSaveNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    onAndroidPathChange(androidPath);
+  }, [androidPath, onAndroidPathChange]);
+
+  function scanAndroidFolder() {
+    if (!androidPath) {
+      return;
+    }
+
+    try {
+      const entries = new Directory(androidPath).list();
+      const saveFiles = entries.filter(
+        (entry): entry is File => entry instanceof File && entry.name.toLowerCase().endsWith('.sav'),
+      );
+      setAndroidSaveCount(saveFiles.length);
+      setAndroidSaveNames(saveFiles.map((file) => file.name));
+    } catch {
+      setAndroidSaveCount(null);
+      setAndroidSaveNames([]);
+    }
+  }
 
   return (
     <Card>
@@ -48,6 +75,25 @@ export function FolderSettings({ onPcPathChange }: FolderSettingsProps) {
         <Text numberOfLines={2} style={styles.selectedPath}>
           {androidPath ?? 'No Android folder selected'}
         </Text>
+        {androidPath ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              onPress={scanAndroidFolder}
+              style={({ pressed }) => [styles.folderButton, pressed && styles.folderButtonPressed]}
+            >
+              <Text style={styles.folderButtonText}>Scan Android saves</Text>
+            </Pressable>
+            {androidSaveCount !== null ? (
+              <View style={styles.results}>
+                <Text style={styles.selectedPath}>{androidSaveCount} save(s) found on Android</Text>
+                {androidSaveNames.map((name) => (
+                  <Text key={name} numberOfLines={1} style={styles.saveName}>{name}</Text>
+                ))}
+              </View>
+            ) : null}
+          </>
+        ) : null}
       </View>
     </Card>
   );
@@ -102,5 +148,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 17,
     marginTop: spacing.sm,
+  },
+  results: {
+    gap: spacing.xs,
+  },
+  saveName: {
+    color: colors.textSecondary,
+    fontSize: 12,
   },
 });

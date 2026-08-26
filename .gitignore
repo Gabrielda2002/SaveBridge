@@ -43,3 +43,6 @@ Thumbs.db
 # IDE metadata
 .idea/
 .vscode/
+
+# Local tooling metadata
+.atl/

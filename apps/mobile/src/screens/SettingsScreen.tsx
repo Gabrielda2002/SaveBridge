@@ -11,6 +11,7 @@ interface SettingsScreenProps {
   pairingToken: string;
   connectionState: string;
   onAddressChange: (address: string) => void;
+  onAndroidPathChange: (path: string | null) => void;
   onBack: () => void;
   onCheckConnection: () => void;
   onPairingTokenChange: (token: string) => void;
@@ -23,6 +24,7 @@ export function SettingsScreen({
   pairingToken,
   connectionState,
   onAddressChange,
+  onAndroidPathChange,
   onBack,
   onCheckConnection,
   onPairingTokenChange,
@@ -56,7 +58,7 @@ export function SettingsScreen({
 
       <View style={styles.section}>
         <SectionLabel>FOLDERS</SectionLabel>
-        <FolderSettings onPcPathChange={onPcPathChange} />
+        <FolderSettings onAndroidPathChange={onAndroidPathChange} onPcPathChange={onPcPathChange} />
       </View>
     </View>
   );
