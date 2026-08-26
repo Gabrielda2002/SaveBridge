@@ -1,25 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Directory, File } from 'expo-file-system';
 
 import { Card } from '../ui/Card';
 import { SectionLabel } from '../ui/SectionLabel';
 import { colors, radii, spacing } from '../../theme/tokens';
-import { useFolderSettings } from './useFolderSettings';
 
 interface FolderSettingsProps {
-  onAndroidPathChange: (path: string | null) => void;
+  androidPath: string | null;
+  pcPath: string;
   onPcPathChange: (path: string) => void;
+  onSelectAndroidFolder: () => void;
 }
 
-export function FolderSettings({ onAndroidPathChange, onPcPathChange }: FolderSettingsProps) {
-  const { androidPath, pcPath, selectAndroidFolder, setPcPath } = useFolderSettings();
+export function FolderSettings({
+  androidPath,
+  pcPath,
+  onPcPathChange,
+  onSelectAndroidFolder,
+}: FolderSettingsProps) {
   const [androidSaveCount, setAndroidSaveCount] = useState<number | null>(null);
   const [androidSaveNames, setAndroidSaveNames] = useState<string[]>([]);
-
-  useEffect(() => {
-    onAndroidPathChange(androidPath);
-  }, [androidPath, onAndroidPathChange]);
 
   function scanAndroidFolder() {
     if (!androidPath) {
@@ -53,7 +54,6 @@ export function FolderSettings({ onAndroidPathChange, onPcPathChange }: FolderSe
           autoCorrect={false}
           multiline
           onChangeText={(path) => {
-            setPcPath(path);
             onPcPathChange(path);
           }}
           placeholder="C:\\path\\to\\nds"
@@ -65,7 +65,7 @@ export function FolderSettings({ onAndroidPathChange, onPcPathChange }: FolderSe
         <Text style={styles.fieldLabel}>ANDROID FOLDER</Text>
         <Pressable
           accessibilityRole="button"
-          onPress={selectAndroidFolder}
+          onPress={onSelectAndroidFolder}
           style={({ pressed }) => [styles.folderButton, pressed && styles.folderButtonPressed]}
         >
           <Text style={styles.folderButtonText}>

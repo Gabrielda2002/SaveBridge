@@ -2,11 +2,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { GameComparison, SaveDirection } from '@savebridge/protocol';
 
-import { SaveStatusBadge } from '../components/SaveStatusBadge';
+import { GameRow } from '../components/GameRow';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { SectionLabel } from '../components/ui/SectionLabel';
 import { colors, radii, spacing } from '../theme/tokens';
+import { summarizeComparisons } from '../utils/comparisonPresentation';
 
 interface HomeScreenProps {
   connectionState: string;
@@ -15,59 +16,6 @@ interface HomeScreenProps {
   onOpenSettings: () => void;
   onSync: () => void;
   onTransfer: (game: GameComparison, direction: SaveDirection) => void;
-}
-
-function summarizeComparisons(games: GameComparison[]): string {
-  const onBoth = games.filter((game) => game.presentOn === 'both').length;
-  const onAndroid = games.filter((game) => game.presentOn === 'android').length;
-  const onWindows = games.filter((game) => game.presentOn === 'windows').length;
-  const conflicts = games.filter((game) => game.status === 'conflict').length;
-
-  const parts: string[] = [];
-  if (onBoth) {
-    parts.push(`${onBoth} on both`);
-  }
-  if (onAndroid) {
-    parts.push(`${onAndroid} Android only`);
-  }
-  if (onWindows) {
-    parts.push(`${onWindows} PC only`);
-  }
-  if (conflicts) {
-    parts.push(`${conflicts} need(s) decision`);
-  }
-  return parts.join(' · ');
-}
-
-function formatDate(value: string | undefined): string {
-  if (!value) {
-    return '—';
-  }
-  const date = new Date(value);
-  return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function describeDevices(game: GameComparison): string {
-  if (game.presentOn === 'both') {
-    return `Android: ${formatDate(game.android?.modifiedAt)} · PC: ${formatDate(game.windows?.modifiedAt)}`;
-  }
-  if (game.presentOn === 'android') {
-    return `Android: ${formatDate(game.android?.modifiedAt)}`;
-  }
-  return `PC: ${formatDate(game.windows?.modifiedAt)}`;
-}
-
-function transferActions(game: GameComparison): SaveDirection[] {
-  if (game.status === 'same') {
-    return [];
-  }
-  if (game.presentOn === 'android') {
-    return ['android-to-windows'];
-  }
-  if (game.presentOn === 'windows') {
-    return ['windows-to-android'];
-  }
-  return ['android-to-windows', 'windows-to-android'];
 }
 
 export function HomeScreen({
@@ -131,47 +79,14 @@ export function HomeScreen({
 
         {comparisons.length ? (
           <View style={styles.gameList}>
-            {comparisons.map((game) => {
-              const actions = transferActions(game);
-              const isTransferring = transferringGameId === game.gameId;
-              return (
-                <View key={game.gameId} style={styles.gameRow}>
-                  <View style={styles.gameInfo}>
-                    <Text numberOfLines={1} style={styles.gameName}>
-                      {game.gameId}
-                    </Text>
-                    <Text numberOfLines={1} style={styles.gameDevices}>
-                      {describeDevices(game)}
-                    </Text>
-                    {actions.length ? (
-                      <View style={styles.transferActions}>
-                        {actions.map((direction) => (
-                          <Pressable
-                            accessibilityRole="button"
-                            disabled={isTransferring}
-                            key={direction}
-                            onPress={() => onTransfer(game, direction)}
-                            style={({ pressed }) => [
-                              styles.transferButton,
-                              pressed && styles.transferButtonPressed,
-                            ]}
-                          >
-                            <Text style={styles.transferButtonText}>
-                              {isTransferring
-                                ? 'Transferring...'
-                                : direction === 'android-to-windows'
-                                  ? 'Send to PC'
-                                  : 'Get from PC'}
-                            </Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    ) : null}
-                  </View>
-                  <SaveStatusBadge status={game.status} />
-                </View>
-              );
-            })}
+            {comparisons.map((game) => (
+              <GameRow
+                game={game}
+                isTransferring={transferringGameId === game.gameId}
+                key={game.gameId}
+                onTransfer={onTransfer}
+              />
+            ))}
           </View>
         ) : null}
       </Card>
@@ -292,45 +207,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     gap: spacing.xs,
     padding: spacing.sm,
-  },
-  gameRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
-  },
-  gameInfo: {
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  gameName: {
-    color: colors.textSecondary,
-    fontSize: 13,
-  },
-  gameDevices: {
-    color: colors.textMuted,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  transferActions: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  transferButton: {
-    borderColor: colors.borderStrong,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-  },
-  transferButtonPressed: {
-    backgroundColor: colors.surfaceRaised,
-  },
-  transferButtonText: {
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: '700',
   },
   tipCard: {
     borderLeftColor: colors.accent,
