@@ -10,6 +10,24 @@ function timestamp(): string {
   return `${date}-${time}`;
 }
 
+function backupFileName(saveFileName: string): string {
+  const extension = saveFileName.slice(saveFileName.lastIndexOf('.'));
+  const baseName = saveFileName.slice(0, saveFileName.lastIndexOf('.'));
+  return `${baseName}-${timestamp()}${extension}`;
+}
+
+async function readAgentError(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { error?: string };
+    if (body?.error) {
+      return body.error;
+    }
+  } catch {
+    // The agent might not return JSON on some failures.
+  }
+  return `HTTP ${response.status}`;
+}
+
 export async function uploadAndroidSave(
   baseUrl: string,
   token: string,
@@ -35,7 +53,7 @@ export async function uploadAndroidSave(
   });
 
   if (!response.ok) {
-    throw new Error('Upload to PC failed');
+    throw new Error(`Upload to PC failed: ${await readAgentError(response)}`);
   }
 
   return (await response.json()) as SaveUploadResponse;
@@ -51,33 +69,61 @@ export async function downloadWindowsSave(
   });
 
   if (!response.ok) {
-    throw new Error('Download from PC failed');
+    throw new Error(`Download from PC failed: ${await readAgentError(response)}`);
   }
 
   return (await response.json()) as SaveDownloadResponse;
+}
+
+function lastDecodedSegment(uri: string): string {
+  const decoded = decodeURIComponent(uri);
+  return decoded.slice(decoded.lastIndexOf('/') + 1);
+}
+
+function findOrCreateBackupsDirectory(rootDirectory: Directory): Directory {
+  const existing = rootDirectory
+    .list()
+    .find(
+      (entry): entry is Directory =>
+        entry instanceof Directory && lastDecodedSegment(entry.uri) === 'backups',
+    );
+  return existing ?? rootDirectory.createDirectory('backups');
+}
+
+async function createAndroidBackup(target: File, rootDirectory: Directory): Promise<string> {
+  const backupsDirectory = findOrCreateBackupsDirectory(rootDirectory);
+  const backup = backupsDirectory.createFile(backupFileName(target.name), 'application/octet-stream');
+
+  // Read + write through real document URIs: File.copy() has no advantages here
+  // and base64()/write() are the primitives already proven to work over SAF.
+  const contents = await target.base64();
+  backup.write(contents, { encoding: 'base64' });
+  return backup.uri;
 }
 
 export async function writeAndroidSaveWithBackup(
   directoryUri: string,
   saveFileName: string,
   contentBase64: string,
+  existingSaveUri?: string | null,
 ): Promise<string | null> {
-  const directory = new Directory(directoryUri);
-  const target = new File(directory, saveFileName);
+  const rootDirectory = new Directory(directoryUri);
+  const target = existingSaveUri ? new File(existingSaveUri) : null;
 
   let backupPath: string | null = null;
-  if (target.exists) {
-    const backupsDirectory = new Directory(directory, 'backups');
-    if (!backupsDirectory.exists) {
-      backupsDirectory.create();
+  if (target) {
+    if (!target.exists) {
+      throw new Error(`Android save is not accessible before writing: ${existingSaveUri}`);
     }
-    const extension = saveFileName.slice(saveFileName.lastIndexOf('.'));
-    const baseName = saveFileName.slice(0, saveFileName.lastIndexOf('.'));
-    const backup = new File(backupsDirectory, `${baseName}-${timestamp()}${extension}`);
-    target.copy(backup);
-    backupPath = backup.uri;
+    backupPath = await createAndroidBackup(target, rootDirectory);
+    console.log('[saveTransfer] backup written:', backupPath);
   }
 
-  target.write(contentBase64, { encoding: 'base64' });
+  // File.create() throws on content:// URIs: new documents must be created
+  // through Directory.createFile(), which returns a real SAF document URI.
+  const destination = target ?? rootDirectory.createFile(saveFileName, 'application/octet-stream');
+  destination.write(contentBase64, { encoding: 'base64' });
+  console.log('[saveTransfer] save written:', destination.uri);
+
   return backupPath;
 }

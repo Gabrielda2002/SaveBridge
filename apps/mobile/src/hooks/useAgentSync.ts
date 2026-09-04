@@ -84,8 +84,10 @@ export function useAgentSync({ pcPath, androidPath }: UseAgentSyncOptions) {
 
       setComparisons(nextComparisons);
       setConnectionState(`${gameList.saves.length} save(s) found on PC`);
-    } catch {
-      setConnectionState('Could not reach PC');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[useAgentSync] checkConnection failed', error);
+      setConnectionState(`Could not reach PC: ${message}`);
     }
   }
 
@@ -117,12 +119,15 @@ export function useAgentSync({ pcPath, androidPath }: UseAgentSyncOptions) {
           androidPath,
           downloaded.saveFileName,
           downloaded.contentBase64,
+          game.android?.savePath ?? null,
         );
       }
 
       await checkConnection();
-    } catch {
-      setConnectionState('Transfer failed');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[useAgentSync] transfer failed', error);
+      setConnectionState(`Transfer failed: ${message}`);
     } finally {
       setTransferringGameId(null);
     }
