@@ -3,6 +3,8 @@ import { basename, dirname, extname, join, relative, resolve, sep } from 'node:p
 
 import type { SaveDownloadResponse, SaveUploadRequest, SaveUploadResponse } from '@savebridge/protocol';
 
+import { logger } from './logger.js';
+
 function timestamp(): string {
   const now = new Date();
   const pad = (value: number) => String(value).padStart(2, '0');
@@ -40,6 +42,11 @@ export async function uploadSave(
   request: SaveUploadRequest,
 ): Promise<SaveUploadResponse> {
   const destination = resolveInside(gamesRoot, request.targetPath);
+  const incomingBytes = Buffer.byteLength(request.contentBase64, 'base64');
+  logger.info(
+    { targetPath: request.targetPath, saveFileName: request.saveFileName, incomingBytes },
+    'upload started',
+  );
 
   let backupPath: string | null = null;
   if (await exists(destination)) {
@@ -48,10 +55,13 @@ export async function uploadSave(
     const backup = join(backupsDirectory, backupFileName(request.saveFileName));
     await copyFile(destination, backup);
     backupPath = relative(gamesRoot, backup).split(sep).join('/');
+    logger.info({ backupPath }, 'backup created');
   }
 
   await mkdir(dirname(destination), { recursive: true });
   await writeFile(destination, Buffer.from(request.contentBase64, 'base64'));
+
+  logger.info({ savedPath: relative(gamesRoot, destination).split(sep).join('/'), backupPath }, 'upload completed');
 
   return {
     saveFileName: request.saveFileName,
@@ -66,6 +76,7 @@ export async function downloadSave(
 ): Promise<SaveDownloadResponse> {
   const source = resolveInside(gamesRoot, relativePath);
   const fileContents = await readFile(source);
+  logger.info({ sourcePath: relativePath, size: fileContents.length }, 'download completed');
 
   return {
     saveFileName: basename(source),

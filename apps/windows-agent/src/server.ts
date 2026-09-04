@@ -14,6 +14,7 @@ import type {
 
 import { configureGamesRoot, getGamesRoot, isAuthorized } from './config.js';
 import { compareSaves } from './compare.js';
+import { logger } from './logger.js';
 import { findSaves } from './scanner.js';
 import { downloadSave, uploadSave } from './transfer.js';
 
@@ -39,6 +40,19 @@ async function readJson<T>(request: IncomingMessage, maxBytes = 8_192): Promise<
 
 export function createAgentServer() {
   return createServer(async (request, response) => {
+    const requestStart = performance.now();
+    response.on('finish', () => {
+      logger.info(
+        {
+          method: request.method,
+          url: request.url,
+          status: response.statusCode,
+          durationMs: Math.round(performance.now() - requestStart),
+        },
+        'request completed',
+      );
+    });
+
     try {
       if (request.method === 'GET' && request.url === '/health') {
         const health: AgentHealthResponse = {
@@ -107,6 +121,7 @@ export function createAgentServer() {
       sendJson(response, 404, { error: 'Not found' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Request failed';
+      logger.error({ err: error, url: request.url }, 'request failed');
       sendJson(response, 400, { error: message });
     }
   });
