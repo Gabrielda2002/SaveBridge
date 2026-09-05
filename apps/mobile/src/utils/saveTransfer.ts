@@ -75,19 +75,38 @@ export async function downloadWindowsSave(
   return (await response.json()) as SaveDownloadResponse;
 }
 
-function lastDecodedSegment(uri: string): string {
-  const decoded = decodeURIComponent(uri);
-  return decoded.slice(decoded.lastIndexOf('/') + 1);
+function findBackupsDirectory(rootDirectory: Directory): Directory | undefined {
+  const directories = rootDirectory.list().filter((entry): entry is Directory => entry instanceof Directory);
+
+  const exact = directories.find((entry) => entry.name === 'backups');
+
+  if (exact) {
+    return exact;
+  }
+  return directories.find((entry) => /^backups \(\d+\)$/.test(entry.name));
 }
 
 function findOrCreateBackupsDirectory(rootDirectory: Directory): Directory {
-  const existing = rootDirectory
-    .list()
-    .find(
-      (entry): entry is Directory =>
-        entry instanceof Directory && lastDecodedSegment(entry.uri) === 'backups',
-    );
-  return existing ?? rootDirectory.createDirectory('backups');
+  const existing = findBackupsDirectory(rootDirectory);
+
+  if (existing) {
+    return existing;
+  }
+
+  const created = rootDirectory.createDirectory('backups');
+  
+  if (created.name === 'backups') {
+    return created;
+  }
+
+  const original = findBackupsDirectory(rootDirectory);
+
+  if (original) {
+    created.delete();
+    return original;
+  }
+
+  return created;
 }
 
 async function createAndroidBackup(target: File, rootDirectory: Directory): Promise<string> {
