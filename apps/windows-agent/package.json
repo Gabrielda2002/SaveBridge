@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
+    "test": "tsx --test test/compare.test.ts test/transfer.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

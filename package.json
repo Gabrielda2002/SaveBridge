@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.9.0",
   "scripts": {
+    "test": "pnpm --filter @savebridge/windows-agent test",
     "typecheck": "pnpm --recursive typecheck"
   }
 }
