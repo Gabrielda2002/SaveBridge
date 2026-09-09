@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 
 import type {
   CompareSavesResponse,
@@ -15,19 +16,57 @@ import {
   writeAndroidSaveWithBackup,
 } from '../utils/saveTransfer';
 
+const STORAGE_KEY = '@savebridge/agent-pairing';
+
+interface StoredPairing {
+  pcAddress: string;
+  pairingToken: string;
+}
+
 interface UseAgentSyncOptions {
   pcPath: string;
   androidPath: string | null;
 }
 
 export function useAgentSync({ pcPath, androidPath }: UseAgentSyncOptions) {
-  const [pcAddress, setPcAddress] = useState('http://192.168.20.26:45821');
+  const [pcAddress, setPcAddress] = useState('');
   const [pairingToken, setPairingToken] = useState('');
+  const [isPairingLoaded, setIsPairingLoaded] = useState(false);
   const [connectionState, setConnectionState] = useState('Not checked');
   const [comparisons, setComparisons] = useState<GameComparison[]>([]);
   const [transferringGameId, setTransferringGameId] = useState<string | null>(null);
 
   const baseUrl = pcAddress.replace(/\/$/, '');
+
+  useEffect(() => {
+    async function loadPairing() {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const pairing = JSON.parse(stored) as StoredPairing;
+        setPcAddress(pairing.pcAddress);
+        setPairingToken(pairing.pairingToken);
+      }
+      setIsPairingLoaded(true);
+    }
+
+    loadPairing().catch(() => setIsPairingLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    if (!isPairingLoaded) {
+      return;
+    }
+
+    const pairing: StoredPairing = { pcAddress, pairingToken };
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(pairing)).catch(() => undefined);
+  }, [isPairingLoaded, pairingToken, pcAddress]);
+
+  useEffect(() => {
+    if (isPairingLoaded && pairingToken) {
+      checkConnection();
+    }
+    // Intentionally keyed on load completion: auto-connect once per app start.
+  }, [isPairingLoaded]);
 
   function handlePaired({ address, token }: PairingPayload) {
     setPcAddress(address);
@@ -44,16 +83,19 @@ export function useAgentSync({ pcPath, androidPath }: UseAgentSyncOptions) {
         throw new Error('Agent returned an error');
       }
 
-      const configResponse = await fetch(`${baseUrl}/config/games-folder`, {
-        body: JSON.stringify({ gamesRoot: pcPath }),
-        headers: {
-          'Content-Type': 'application/json',
-          'x-savebridge-token': pairingToken,
-        },
-        method: 'POST',
-      });
-      if (!configResponse.ok) {
-        throw new Error('PC folder configuration failed');
+      // The agent remembers its own folder now; an explicit path overrides it.
+      if (pcPath) {
+        const configResponse = await fetch(`${baseUrl}/config/games-folder`, {
+          body: JSON.stringify({ gamesRoot: pcPath }),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-savebridge-token': pairingToken,
+          },
+          method: 'POST',
+        });
+        if (!configResponse.ok) {
+          throw new Error('PC folder configuration failed');
+        }
       }
 
       const gamesResponse = await fetch(`${baseUrl}/games`, {

@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { Directory } from 'expo-file-system';
 
 const STORAGE_KEY = '@savebridge/folder-settings';
-const DEFAULT_PC_PATH = 'C:\\Users\\PROGRAMACION\\Documents\\Emulaciones\\games\\nds';
 
 interface StoredFolderSettings {
   pcPath: string;
@@ -11,7 +10,7 @@ interface StoredFolderSettings {
 }
 
 export function useFolderSettings() {
-  const [pcPath, setPcPath] = useState(DEFAULT_PC_PATH);
+  const [pcPath, setPcPath] = useState('');
   const [androidPath, setAndroidPath] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
